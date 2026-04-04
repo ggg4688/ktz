@@ -1,4 +1,4 @@
-module realtime
+module realtime_websocket
 
 go 1.22
 

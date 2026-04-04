@@ -30,6 +30,7 @@ from app.models import (
     TelemetryWindowResponse,
     TokenResponse,
 )
+from app.realtime import RealtimeWebSocketBridge
 from app.repository import SnapshotRepository, utc_now
 from app.simulator import TelemetrySimulator
 
@@ -46,13 +47,16 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     repository = SnapshotRepository(settings)
     broker = EventBroker()
-    engine = TelemetryEngine(settings, repository, broker)
+    realtime_bridge = RealtimeWebSocketBridge(settings)
+    await realtime_bridge.start()
+    engine = TelemetryEngine(settings, repository, broker, realtime_bridge)
     simulator = TelemetrySimulator(engine, settings.default_locomotive_id)
     auth_service = AuthService(settings, repository)
 
     app.state.settings = settings
     app.state.repository = repository
     app.state.broker = broker
+    app.state.realtime_bridge = realtime_bridge
     app.state.engine = engine
     app.state.simulator = simulator
     app.state.auth_service = auth_service
@@ -68,6 +72,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await simulator.stop()
+        await realtime_bridge.stop()
         repository.close()
 
 

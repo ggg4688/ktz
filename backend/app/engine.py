@@ -10,6 +10,7 @@ from typing import Any
 
 from app.config import AppSettings
 from app.models import AlertSnapshot, TelemetryIn, TelemetrySnapshot
+from app.realtime import RealtimeWebSocketBridge
 from app.repository import SnapshotRepository, utc_now
 from app.scoring import METRIC_FIELDS, calculate_health, describe_formula, validate_health_config
 
@@ -55,10 +56,17 @@ class EventBroker:
 
 
 class TelemetryEngine:
-    def __init__(self, settings: AppSettings, repository: SnapshotRepository, broker: EventBroker) -> None:
+    def __init__(
+        self,
+        settings: AppSettings,
+        repository: SnapshotRepository,
+        broker: EventBroker,
+        realtime_bridge: RealtimeWebSocketBridge,
+    ) -> None:
         self.settings = settings
         self.repository = repository
         self.broker = broker
+        self.realtime_bridge = realtime_bridge
         self.metrics = ServiceMetrics()
         self._health_config_version, self._health_config = repository.get_active_health_config()
         self._formula_details = self._compose_formula_details()
@@ -124,7 +132,15 @@ class TelemetryEngine:
             self.repository.prune_older_than(int(self._health_config["retention_hours"]))
             self._samples_since_prune = 0
 
-        self.broker.publish(stored_snapshot.model_dump(mode="json"))
+        snapshot_payload = stored_snapshot.model_dump(mode="json")
+        self.broker.publish(snapshot_payload)
+        self.realtime_bridge.publish(
+            {
+                "event": "snapshot",
+                "locomotive_id": stored_snapshot.locomotive_id,
+                "payload": snapshot_payload,
+            }
+        )
         return stored_snapshot
 
     def get_latest_snapshot(self, locomotive_id: str) -> TelemetrySnapshot | None:
@@ -239,7 +255,7 @@ class TelemetryEngine:
         return self._formula_details
 
     def get_service_metrics(self) -> dict[str, Any]:
-        return {
+        metrics = {
             "ingested_total": self.metrics.ingested_total,
             "simulator_generated_total": self.metrics.simulator_generated_total,
             "external_ingested_total": self.metrics.external_ingested_total,
@@ -248,6 +264,8 @@ class TelemetryEngine:
             "subscriber_count": self.broker.subscriber_count,
             "last_ingested_at": self.metrics.last_ingested_at,
         }
+        metrics.update(self.realtime_bridge.get_metrics())
+        return metrics
 
     def metrics_as_prometheus(self) -> str:
         metrics = self.get_service_metrics()
@@ -264,6 +282,18 @@ class TelemetryEngine:
             "# HELP digital_twin_subscriber_count Current SSE subscribers.",
             "# TYPE digital_twin_subscriber_count gauge",
             f"digital_twin_subscriber_count {metrics['subscriber_count']}",
+            "# HELP digital_twin_realtime_ws_enabled Whether the websocket bridge is configured.",
+            "# TYPE digital_twin_realtime_ws_enabled gauge",
+            f"digital_twin_realtime_ws_enabled {metrics['realtime_ws_enabled']}",
+            "# HELP digital_twin_realtime_ws_connected Whether the websocket bridge is connected.",
+            "# TYPE digital_twin_realtime_ws_connected gauge",
+            f"digital_twin_realtime_ws_connected {metrics['realtime_ws_connected']}",
+            "# HELP digital_twin_realtime_ws_published_total Total websocket bridge messages published.",
+            "# TYPE digital_twin_realtime_ws_published_total counter",
+            f"digital_twin_realtime_ws_published_total {metrics['realtime_ws_published_total']}",
+            "# HELP digital_twin_realtime_ws_dropped_total Total websocket bridge messages dropped.",
+            "# TYPE digital_twin_realtime_ws_dropped_total counter",
+            f"digital_twin_realtime_ws_dropped_total {metrics['realtime_ws_dropped_total']}",
         ]
         return "\n".join(lines) + "\n"
 
@@ -274,6 +304,7 @@ class TelemetryEngine:
             "config_path": str(self.settings.config_path),
             "health_model_version": self._health_config_version,
             "metrics": self.get_service_metrics(),
+            "realtime_websocket": self.realtime_bridge.status(),
         }
 
     def _smooth(self, locomotive_id: str, raw_values: dict[str, float]) -> dict[str, float]:

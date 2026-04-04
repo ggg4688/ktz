@@ -18,6 +18,7 @@ Swagger is intentionally disabled for now, per scope.
 - SQLite
 - standard-library background simulator
 - Server-Sent Events for a lightweight live stream
+- optional Go websocket broadcaster for realtime fan-out
 
 ## Database
 
@@ -46,6 +47,26 @@ The simulator starts automatically by default. If you want only external ingesti
 $env:DIGITAL_TWIN_AUTO_START_SIMULATOR='false'
 python -m uvicorn app.main:app --reload
 ```
+
+## Realtime WebSocket Service
+
+The websocket broadcaster now lives in `backend/services/realtime_websocket`.
+
+Run it in a separate terminal:
+
+```powershell
+cd backend/services/realtime_websocket
+go run ./cmd
+```
+
+Then point the Python backend at it:
+
+```powershell
+$env:DIGITAL_TWIN_REALTIME_WS_URL='ws://127.0.0.1:8080/ws'
+python -m uvicorn app.main:app --reload
+```
+
+The backend derives the correct `Origin` header automatically. If you need to override it, set `DIGITAL_TWIN_REALTIME_WS_ORIGIN`.
 
 ## Auth
 
@@ -102,6 +123,8 @@ For SSE in a browser client, use the query-string fallback:
 - `POST /api/v1/simulator/stop`
 
 `GET /api/v1/admin/users`, `POST /api/v1/admin/users`, `GET /metrics`, and `PUT /api/v1/config/health-model` require an `admin` JWT.
+
+`GET /healthz` now also reports `realtime_websocket` bridge status, and `/metrics` includes `digital_twin_realtime_ws_*` counters.
 
 ## Health index
 

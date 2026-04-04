@@ -36,6 +36,10 @@ class AppSettings:
     auto_start_simulator: bool
     default_locomotive_id: str
     cors_origins: list[str]
+    realtime_websocket_url: str | None
+    realtime_websocket_origin: str | None
+    realtime_websocket_reconnect_seconds: int
+    realtime_websocket_queue_size: int
 
 
 @lru_cache
@@ -63,6 +67,16 @@ def get_settings() -> AppSettings:
         auto_start_simulator=_as_bool(os.getenv("DIGITAL_TWIN_AUTO_START_SIMULATOR"), True),
         default_locomotive_id=os.getenv("DIGITAL_TWIN_DEFAULT_LOCOMOTIVE_ID", "locomotive-01"),
         cors_origins=cors_origins,
+        realtime_websocket_url=(os.getenv("DIGITAL_TWIN_REALTIME_WS_URL") or "").strip() or None,
+        realtime_websocket_origin=(os.getenv("DIGITAL_TWIN_REALTIME_WS_ORIGIN") or "").strip() or None,
+        realtime_websocket_reconnect_seconds=max(
+            1,
+            _as_int(os.getenv("DIGITAL_TWIN_REALTIME_WS_RECONNECT_SECONDS"), 3),
+        ),
+        realtime_websocket_queue_size=max(
+            1,
+            _as_int(os.getenv("DIGITAL_TWIN_REALTIME_WS_QUEUE_SIZE"), 200),
+        ),
     )
 
 

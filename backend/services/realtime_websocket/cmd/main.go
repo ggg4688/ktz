@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	ws "realtime/internal/ws"
+	ws "realtime_websocket/internal/ws"
 )
 
 func newServer(addr string, handler http.Handler) *http.Server {
