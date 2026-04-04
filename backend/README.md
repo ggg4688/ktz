@@ -9,8 +9,7 @@ Python backend for the locomotive telemetry case. It covers the backend-owned pa
 - recent history, replay window, and CSV export;
 - service health and basic metrics.
 - JWT authentication with RBAC.
-
-Swagger is intentionally disabled for now, per scope.
+- OpenAPI docs via Swagger UI and ReDoc.
 
 ## Stack
 
@@ -40,6 +39,12 @@ From the `backend` directory:
 python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
+
+Swagger and OpenAPI:
+
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/redoc`
+- `http://127.0.0.1:8000/openapi.json`
 
 The simulator starts automatically by default. If you want only external ingestion:
 

@@ -46,6 +46,15 @@ class AuthApiTests(unittest.TestCase):
         token = response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
 
+    def test_openapi_docs_are_available(self) -> None:
+        docs_response = self.client.get("/docs")
+        self.assertEqual(docs_response.status_code, 200)
+        self.assertIn("Swagger UI", docs_response.text)
+
+        openapi_response = self.client.get("/openapi.json")
+        self.assertEqual(openapi_response.status_code, 200)
+        self.assertEqual(openapi_response.json()["info"]["title"], "Locomotive Digital Twin Backend")
+
     def test_invalid_login_is_rejected(self) -> None:
         response = self.client.post(
             "/api/v1/auth/login",

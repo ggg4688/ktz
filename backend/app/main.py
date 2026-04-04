@@ -79,9 +79,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Locomotive Digital Twin Backend",
     version="0.2.0",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    swagger_ui_parameters={"persistAuthorization": True},
     lifespan=lifespan,
 )
 
@@ -159,7 +160,7 @@ def root() -> dict[str, Any]:
     return {
         "service": "locomotive-digital-twin-backend",
         "timestamp": utc_now().isoformat(),
-        "docs": "disabled by scope",
+        "docs": "/docs",
     }
 
 
