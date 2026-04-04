@@ -1,0 +1,58 @@
+{
+  "formula": "score = 100 - sum(metric_penalty * metric_weight * 100) - min(alert_penalty_cap, sum(active_alert_penalties))",
+  "retention_hours": 72,
+  "smoothing": {
+    "alpha": 0.35
+  },
+  "categories": {
+    "normal_min": 80,
+    "attention_min": 55
+  },
+  "alert_penalty_cap": 35,
+  "severity_penalties": {
+    "warning": 8,
+    "critical": 18
+  },
+  "metrics": {
+    "temperature_c": {
+      "label": "Engine temperature",
+      "weight": 0.34,
+      "direction": "high_only",
+      "ideal_max": 90,
+      "safe_max": 110,
+      "warning_high": 95,
+      "critical_high": 103
+    },
+    "pressure_bar": {
+      "label": "Main pressure",
+      "weight": 0.26,
+      "direction": "range",
+      "ideal_min": 5.5,
+      "ideal_max": 7.5,
+      "safe_min": 3.0,
+      "safe_max": 9.5,
+      "warning_low": 4.5,
+      "critical_low": 3.5,
+      "warning_high": 8.2,
+      "critical_high": 9.0
+    },
+    "fuel_level_pct": {
+      "label": "Fuel reserve",
+      "weight": 0.2,
+      "direction": "low_only",
+      "ideal_min": 35,
+      "safe_min": 8,
+      "warning_low": 22,
+      "critical_low": 12
+    },
+    "speed_kph": {
+      "label": "Speed",
+      "weight": 0.2,
+      "direction": "high_only",
+      "ideal_max": 100,
+      "safe_max": 130,
+      "warning_high": 112,
+      "critical_high": 124
+    }
+  }
+}

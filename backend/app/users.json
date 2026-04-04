@@ -1,0 +1,31 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "full_name": "Demo Admin",
+      "role": "admin",
+      "salt": "6469676974616c2d7477696e2d61646d696e2d73616c74",
+      "password_hash": "36f7a5771daf1338e0f1ec1e58c387eeededb079a6e5389fd1466fe3d3c462d3",
+      "iterations": 120000,
+      "disabled": false
+    },
+    {
+      "username": "operator",
+      "full_name": "Demo Operator",
+      "role": "operator",
+      "salt": "6469676974616c2d7477696e2d6f70657261746f722d73616c74",
+      "password_hash": "63ba75eed801f2f629eba33f5f500b8cf416d9fe68cca6e6fb928208d065a110",
+      "iterations": 120000,
+      "disabled": false
+    },
+    {
+      "username": "viewer",
+      "full_name": "Demo Viewer",
+      "role": "viewer",
+      "salt": "6469676974616c2d7477696e2d7669657765722d73616c74",
+      "password_hash": "090cf9250f139a2f70e191fd2ae662aa5250812a8f96fa718f0dd5aa8f9c3c45",
+      "iterations": 120000,
+      "disabled": false
+    }
+  ]
+}
