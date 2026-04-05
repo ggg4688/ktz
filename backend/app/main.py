@@ -8,7 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import PlainTextResponse, Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth import AuthService
@@ -403,6 +403,19 @@ def export_csv(
     payload = engine.export_csv(locomotive_id, minutes=minutes, limit=limit)
     headers = {"Content-Disposition": f'attachment; filename="{locomotive_id}-telemetry.csv"'}
     return PlainTextResponse(content=payload, media_type="text/csv", headers=headers)
+
+
+@app.get("/api/v1/export/pdf")
+def export_pdf(
+    locomotive_id: str = Query(default="locomotive-01", min_length=1),
+    minutes: int = Query(default=15, ge=1, le=4_320),
+    limit: int = Query(default=3_000, ge=1, le=10_000),
+    engine: TelemetryEngine = Depends(get_engine),
+    _: PublicUser = Depends(require_min_role("viewer")),
+) -> Response:
+    payload = engine.export_pdf(locomotive_id, minutes=minutes, limit=limit)
+    headers = {"Content-Disposition": f'attachment; filename="{locomotive_id}-report.pdf"'}
+    return Response(content=payload, media_type="application/pdf", headers=headers)
 
 
 @app.get("/api/v1/stream")

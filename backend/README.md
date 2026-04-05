@@ -6,7 +6,7 @@ Python backend for the locomotive telemetry case. It covers the backend-owned pa
 - a built-in simulator for demo mode;
 - transparent health index calculation;
 - alerts and recommendations;
-- recent history, replay window, and CSV export;
+- recent history, replay window, and CSV/PDF export;
 - service health and basic metrics.
 - JWT authentication with RBAC.
 - OpenAPI docs via Swagger UI and ReDoc.
@@ -122,6 +122,7 @@ For SSE in a browser client, use the query-string fallback:
 - `GET /api/v1/config/health-model`
 - `PUT /api/v1/config/health-model`
 - `GET /api/v1/export/csv`
+- `GET /api/v1/export/pdf`
 - `GET /api/v1/stream`
 - `GET /api/v1/simulator/status`
 - `POST /api/v1/simulator/start`

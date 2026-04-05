@@ -237,6 +237,55 @@ class TelemetryEngine:
             )
         return buffer.getvalue()
 
+    def export_pdf(self, locomotive_id: str, minutes: int, limit: int) -> bytes:
+        items = self.get_history(locomotive_id, minutes=minutes, limit=limit)
+        latest = items[-1] if items else None
+
+        warning_alerts = sum(
+            1 for item in items for alert in item.alerts if alert.severity == "warning"
+        )
+        critical_alerts = sum(
+            1 for item in items for alert in item.alerts if alert.severity == "critical"
+        )
+        event_markers = _build_event_markers(items, limit=16)
+
+        lines = [
+            "Locomotive Digital Twin - Mini Report",
+            f"Generated at: {utc_now().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"Locomotive: {locomotive_id}",
+            f"Window: last {minutes} minutes",
+            f"Samples: {len(items)}",
+        ]
+
+        if latest is not None:
+            lines.extend(
+                [
+                    f"Latest captured: {latest.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                    f"Health index: {latest.health_score:.1f} ({latest.health_category})",
+                    f"Speed: {latest.speed_kph:.1f} km/h",
+                    f"Temperature: {latest.temperature_c:.1f} C",
+                    f"Pressure: {latest.pressure_bar:.2f} bar",
+                    f"Fuel level: {latest.fuel_level_pct:.1f}%",
+                ]
+            )
+        else:
+            lines.append("Latest captured: n/a")
+
+        lines.extend(
+            [
+                f"Alert totals: warning={warning_alerts}, critical={critical_alerts}",
+                "",
+                "Event markers:",
+            ]
+        )
+
+        if event_markers:
+            lines.extend(f"- {marker}" for marker in event_markers)
+        else:
+            lines.append("- No notable events in selected window.")
+
+        return _build_pdf_document(lines)
+
     def get_formula_details(self) -> dict[str, Any]:
         return self._formula_details
 
@@ -326,3 +375,88 @@ class TelemetryEngine:
         details = describe_formula(self._health_config)
         details["health_model_version"] = self._health_config_version
         return details
+
+
+def _build_event_markers(items: list[TelemetrySnapshot], limit: int) -> list[str]:
+    markers: list[str] = []
+    previous_category: str | None = None
+
+    for item in items:
+        timestamp = item.captured_at.strftime("%H:%M:%S")
+
+        if previous_category is not None and item.health_category != previous_category:
+            markers.append(f"{timestamp} | health category changed to {item.health_category}")
+
+        previous_category = item.health_category
+
+        if item.alerts:
+            first_alert = item.alerts[0]
+            extra = "" if len(item.alerts) == 1 else f" (+{len(item.alerts) - 1} more)"
+            markers.append(
+                f"{timestamp} | {first_alert.severity.upper()} {first_alert.metric}{extra}"
+            )
+
+        if len(markers) >= limit:
+            break
+
+    return markers[:limit]
+
+
+def _build_pdf_document(lines: list[str]) -> bytes:
+    safe_lines = [_normalize_pdf_line(line) for line in lines[:64]]
+    content_lines = [
+        "BT",
+        "/F1 11 Tf",
+        "40 810 Td",
+        "14 TL",
+    ]
+
+    for line in safe_lines:
+        content_lines.append(f"({_escape_pdf_text(line)}) Tj")
+        content_lines.append("T*")
+
+    content_lines.append("ET")
+    content_stream = "\n".join(content_lines).encode("latin-1")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        (
+            f"<< /Length {len(content_stream)} >>\nstream\n".encode("ascii")
+            + content_stream
+            + b"\nendstream"
+        ),
+    ]
+
+    pdf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets: list[int] = [0]
+
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf))
+        pdf.extend(f"{index} 0 obj\n".encode("ascii"))
+        pdf.extend(obj)
+        pdf.extend(b"\nendobj\n")
+
+    xref_pos = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    pdf.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    pdf.extend(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n".encode("ascii"))
+    pdf.extend(f"startxref\n{xref_pos}\n%%EOF\n".encode("ascii"))
+
+    return bytes(pdf)
+
+
+def _escape_pdf_text(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _normalize_pdf_line(line: str, max_len: int = 110) -> str:
+    normalized = "".join(char if 32 <= ord(char) <= 126 else "?" for char in line)
+    return normalized[:max_len]

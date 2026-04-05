@@ -122,6 +122,15 @@ class AuthApiTests(unittest.TestCase):
         )
         self.assertEqual(update_response.status_code, 200)
 
+    def test_viewer_can_export_pdf_report(self) -> None:
+        headers = self._login("viewer", "viewer123")
+
+        response = self.client.get("/api/v1/export/pdf", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF-"))
+
     def test_admin_can_create_user_and_new_user_can_login(self) -> None:
         admin_headers = self._login("admin", "admin123")
 
