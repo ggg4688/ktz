@@ -5,3 +5,6 @@ backend/app/__pycache__/
 backend/tests/__pycache__/
 frontend/__pycache__/
 *.pyc
+
+frontend/locomotive-live/node_modules/
+frontend/locomotive-live/dist/
